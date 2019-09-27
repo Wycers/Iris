@@ -6,9 +6,11 @@ import os
 class Iris():
     def __init__(self):
         self.layers = {}
+        self.use('GET', '/', get)
+        self.use('HEAD', '/', head)
 
-    async def use(self, method, path, handler):
-        self.layers.append(handler)
+
+    def use(self, method, path, handler):
         if path is None:
             path = '*'
         if not method in self.layers:
@@ -23,6 +25,21 @@ class Iris():
 
         response = Response(writer)
 
+        print(request.method)
+        print(request.url)
+
+        if not request.method in self.layers:
+            response.set_status(405)
+        elif not request.url in self.layers[request.method]:
+            print('???')
+            response.set_status(404)
+            response.set_header('Content-Type', 'text/html; charset=utf-8')
+            response.set_header('Connection', 'close')
+            response.set_body('<html><body>404 Not found<body></html>\r\n')
+        else:
+            for handler in self.layers[request.method][request.url]:
+                await handler(request, response)
+        await response.end()
 
 
     def listen(self, addr="127.0.0.1", port="2333"):
@@ -40,8 +57,9 @@ class Iris():
         loop.run_until_complete(server.wait_closed())
         loop.close()
 
-def get(req, res):
+async def get(req, res):
     print(req, res)
+    print(req.url)
     # path = req.url
     # print(path)
     # if os.path.exists(path):
@@ -94,10 +112,13 @@ def get(req, res):
     #         b'\r\n'
     #     ])
 
+def head(req, res):
+    print('head')
+
 if __name__ == "__main__":
     iris = Iris()
 
-    iris.use('GET', '*', )
-    iris.use('HEAD', '*', )
+    iris.use('GET', '*', get)
+    iris.use('HEAD', '*', head)
 
     iris.listen()
