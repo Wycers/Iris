@@ -30,12 +30,15 @@ class Iris():
 
         if not request.method in self.layers:
             response.set_status(405)
+            response.set_header('Content-Type', 'text/html; charset=utf-8')
+            response.set_header('Connection', 'close')
+            response.set_body('<html><body><h1>405 Method Not Allowed</h1></body></html>')
         elif not request.url in self.layers[request.method]:
-            print('???')
+            # 404 while handler not found
             response.set_status(404)
             response.set_header('Content-Type', 'text/html; charset=utf-8')
             response.set_header('Connection', 'close')
-            response.set_body('<html><body>404 Not found<body></html>\r\n')
+            response.set_body('<html><body><h1>404 Not found</h1></body></html>')
         else:
             for handler in self.layers[request.method][request.url]:
                 await handler(request, response)
@@ -102,15 +105,6 @@ async def get(req, res):
     #         ])
     #         writer.write(file.read())
 
-    # else:
-    #     writer.writelines([
-    #         b'HTTP/1.0 404 Not found\r\n',
-    #         b'Content-Type:text/html; charset=utf-8\r\n',
-    #         b'Connection: close\r\n',
-    #         b'\r\n',
-    #         b'<html><body>404 Not found<body></html>\r\n',
-    #         b'\r\n'
-    #     ])
 
 def head(req, res):
     print('head')
