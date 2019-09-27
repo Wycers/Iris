@@ -2,15 +2,14 @@ from .request import Request
 from .response import Response
 import asyncio
 import os
+import posixpath
 
 class Iris():
     def __init__(self):
         self.layers = {}
-        self.use('GET', '/', get)
-        self.use('HEAD', '/', head)
-
 
     def use(self, method, path, handler):
+        print(method, path)
         if path is None:
             path = '*'
         if not method in self.layers:
@@ -33,6 +32,9 @@ class Iris():
             response.set_header('Content-Type', 'text/html; charset=utf-8')
             response.set_header('Connection', 'close')
             response.set_body('<html><body><h1>405 Method Not Allowed</h1></body></html>')
+        if '*' in self.layers[request.method]:
+            for handler in self.layers[request.method]['*']:
+                await handler(request, response)
         elif not request.url in self.layers[request.method]:
             # 404 while handler not found
             response.set_status(404)
@@ -44,6 +46,37 @@ class Iris():
                 await handler(request, response)
         await response.end()
 
+    async def static_fn(self, req, res):
+        path = "." + req.url
+
+        if not os.path.exists(path):
+            res.set_status(404)
+            res.set_header('Content-Type', 'text/html; charset=utf-8')
+            res.set_header('Connection', 'close')
+            res.set_body('<html><body><h1>404 Not found</h1></body></html>')
+        if os.path.isdir(path):
+            res.set_status(200)
+            res.set_header('Content-Type', 'text/html; charset=utf-8')
+            res.set_header('Connection', 'close')
+
+            print(os.listdir(path))
+            body = ""
+            for x in os.listdir(path):
+                body += '<a href=%s/%s>%s</a><br>' % (posixpath.split(path)[-1], x, x)
+            res.set_body('''
+            <html>
+                <head><title>%s</title></head>
+                <body>
+                    <h1>Index of %s</h1>
+                    <pre>%s</pre>
+                </body>
+            </html>''' % (str(path), str(path), body))
+        else:
+            res.send_file(path)
+
+    def static(self, path):
+        self.use('GET', '*', self.static_fn)
+        self.use('HEAD', '*', self.static_fn)
 
     def listen(self, addr="127.0.0.1", port="2333"):
         loop = asyncio.get_event_loop()
@@ -60,59 +93,11 @@ class Iris():
         loop.run_until_complete(server.wait_closed())
         loop.close()
 
-async def get(req, res):
-    print(req, res)
-    print(req.url)
-    # path = req.url
-    # print(path)
-    # if os.path.exists(path):
-    #     if os.path.isdir(path):
-    #         body = [b'HTTP/1.0 200 OK\r\n', b'Content-Type:text/html; charset=utf-8\r\n',
-    #                 b'Connection: close\r\n',
-    #                 b'\r\n',
-    #                 bytes('<html><head><title>Index of ' +
-    #                         str(path) + '</title></head>', 'utf-8')
-    #                 ]
-
-    #         body = body + [
-    #             b'<body bgcolor="white">',
-    #             bytes('<h1>Index of ' + str(path) + '</h1><hr>', 'utf-8'),
-    #             b'<pre>'
-    #         ]
-    #         print(os.listdir(path))
-    #         for x in os.listdir(path):
-    #             body.append(bytes('<a href=' + str(posixpath.split(path)
-    #                                                 [-1]) + '/' + str(x) + '>' + str(x) + '</a><br>', 'utf-8'))
-
-    #         body = body + [
-    #             b'</pre>'
-    #             b'<hr>'
-    #             b'</body></html>\r\n',
-    #             b'\r\n'
-    #         ]
-
-    #         writer.writelines(body)
-    #     else:
-    #         size = os.path.getsize(path)
-    #         file = open(path, 'rb')
-    #         writer.writelines([
-    #             b'HTTP/1.0 200 OK\r\n',
-    #             b'Content-Type:text/html; charset=utf-8\r\n',
-    #             b'Connection: close\r\n',
-    #             bytes('Content-Length: ' + str(size) + '\r\n', 'utf-8'),
-    #             bytes('Content-Type: ' + guess_type(path) + '\r\n', 'utf-8'),
-    #             b'\r\n'
-    #         ])
-    #         writer.write(file.read())
-
-
-def head(req, res):
-    print('head')
 
 if __name__ == "__main__":
     iris = Iris()
 
-    iris.use('GET', '*', get)
-    iris.use('HEAD', '*', head)
+    iris.use('GET', '*', static)
+    iris.use('HEAD', '*', static)
 
     iris.listen()
