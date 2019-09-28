@@ -9,11 +9,16 @@ class Request():
         tmp = ""
         while True:
             data = await self.reader.readline()
+            print(data)
             if data == b'\r\n':
                 break
+            if data == b'':
+                break
             tmp = tmp + data.decode()
+        print(tmp)
         message = tmp.split("\r\n")[0:-1]
-        print(message)
+        if len(message) == 0:
+            raise Exception("empty")
 
         tmp = message[0].split(" ")
         self.method = tmp[0]
@@ -26,4 +31,3 @@ class Request():
             value = header[pos + 1:]
             self.header[key] = value
 
-        print(self.header)
