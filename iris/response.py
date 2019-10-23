@@ -21,6 +21,7 @@ def guess_type(path):
     else:
         return extensions_map['']
 
+
 class Response():
     def __init__(self, method, writer):
         self.__writer = writer
@@ -62,13 +63,27 @@ class Response():
         self.set_header('Content-Type', 'text/html;charset=utf-8')
         self.set_body(body.encode("utf-8"))
 
-    async def send_file(self, path):
+    async def send_file(self, path, start=None, end=None):
         size = os.path.getsize(path)
-        print("Send file %s with size %d" % (path, size))
         file = open(path, 'rb')
-        self.set_header('Content-Type', guess_type(path))
-        self.set_header('Content-Length', str(size))
-        self.set_body(file.read())
+        if start is None and end is None:
+            print("Send file %s with size %d" % (path, size))
+            self.set_header('Content-Type', guess_type(path))
+            self.set_header('Content-Length', str(size))
+            self.set_body(file.read())
+        else:
+            if start is None:
+                start = 0
+            if end is None:
+                end = size - 1
+            self.set_status(206)
+            self.set_header('Accept-Ranges', 'bytes')
+            self.set_header('Content-Range', 'bytes %d-%d/%d' % (start, end, size)),
+            if start > end:
+                raise Exception("Invalid range specified")
+            else:
+                file.seek(start)
+                self.set_body(file.read(end-start+1))
         file.close()
 
     async def end(self):

@@ -25,9 +25,14 @@ class Request():
         self.url = urllib.parse.unquote(tmp[1])
         self.protocol = tmp[2]
 
-        for header in message[1: -1]:
-            pos = header.find(": ")
-            key = header[:pos]
-            value = header[pos + 1:]
+        for header in message[1: ]:
+            pos = header.find(":")
+            key = header[:pos].strip().lower()
+            value = header[pos + 1:].strip()
             self.header[key] = value
+
+    def get_header(self, key):
+        if key.lower() in self.header:
+            return self.header[key]
+        return None
 

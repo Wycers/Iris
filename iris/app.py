@@ -3,6 +3,7 @@ from .response import Response
 import asyncio
 import os
 import posixpath
+import urllib
 
 class Iris():
     def __init__(self):
@@ -53,7 +54,7 @@ class Iris():
             print(os.listdir(path))
             body = ""
             for x in os.listdir(path):
-                body += '<a href=%s/%s>%s</a><br>' % (posixpath.split(path)[-1], x, x)
+                body += '<a href=%s/%s>%s</a><br>' % (posixpath.split(path)[-1], urllib.parse.quote(x), x)
             res.html('''
             <html>
                 <head><title>%s</title></head>
@@ -64,7 +65,21 @@ class Iris():
             </html>''' % (str(path), str(path), body))
         elif os.path.isfile(path):
             res.set_status(200)
-            await res.send_file(path)
+            Range = req.get_header('range')
+            start, end = None, None
+            if Range is not None:
+                s, t = Range.strip('bytes=').split('-')
+                try:
+                    start = int(s)
+                except ValueError:
+                    start = None
+                try:
+                    end = int(t)
+                except ValueError:
+                    end = None
+
+            print(start, end)
+            await res.send_file(path, start, end)
         else:
             res.set_status(404)
             res.html('<html><body><h1>404 Not found</h1></body></html>')
