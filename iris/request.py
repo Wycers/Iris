@@ -1,4 +1,5 @@
 import asyncio
+import urllib
 
 class Request():
     def __init__(self, reader):
@@ -9,7 +10,6 @@ class Request():
         tmp = ""
         while True:
             data = await self.reader.readline()
-            print(data)
             if data == b'\r\n':
                 break
             if data == b'':
@@ -22,7 +22,7 @@ class Request():
 
         tmp = message[0].split(" ")
         self.method = tmp[0]
-        self.url = tmp[1]
+        self.url = urllib.parse.unquote(tmp[1])
         self.protocol = tmp[2]
 
         for header in message[1: -1]:

@@ -59,8 +59,8 @@ class Response():
 
     def html(self, body):
         self.set_status(200)
-        self.set_header('Content-Type', 'text/html')
-        self.set_body(body.encode())
+        self.set_header('Content-Type', 'text/html;charset=utf-8')
+        self.set_body(body.encode("utf-8"))
 
     async def send_file(self, path):
         size = os.path.getsize(path)
