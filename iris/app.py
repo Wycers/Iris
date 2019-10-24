@@ -1,8 +1,8 @@
 from .request import Request
 from .response import Response
+from pathlib import Path
 import asyncio
 import os
-import posixpath
 import urllib
 
 class Iris():
@@ -44,42 +44,52 @@ class Iris():
         await response.end()
 
     async def static_fn(self, req, res):
-        path = "." + req.url
+        path = Path("." + req.url)
 
-        if not os.path.exists(path):
-            res.set_status(404)
-            res.html('<html><body><h1>404 Not found</h1></body></html>')
-        if os.path.isdir(path):
-            res.set_status(200)
-            print(os.listdir(path))
-            body = ""
-            for x in os.listdir(path):
-                body += '<a href=%s/%s>%s</a><br>' % (posixpath.split(path)[-1], urllib.parse.quote(x), x)
-            res.html('''
-            <html>
-                <head><title>%s</title></head>
-                <body>
-                    <h1>Index of %s</h1>
-                    <pre>%s</pre>
-                </body>
-            </html>''' % (str(path), str(path), body))
-        elif os.path.isfile(path):
-            res.set_status(200)
-            Range = req.get_header('range')
-            start, end = None, None
-            if Range is not None:
-                s, t = Range.strip('bytes=').split('-')
-                try:
-                    start = int(s)
-                except ValueError:
-                    start = None
-                try:
-                    end = int(t)
-                except ValueError:
-                    end = None
+        if path.exists():
+            if path.is_dir():
+                res.set_header('Set-Cookie', req.url + '/; path=/;')
+                cookie = req.get_header('cookie')
+                if cookie is not None:
+                    if str(path) == '.' and cookie != '/':
+                        res.set_status(302)
+                        res.set_header('Location', cookie)
+                        return
+                res.set_status(200)
+                body = ""
 
-            print(start, end)
-            await res.send_file(path, start, end)
+                body += '<a href=\"/%s\">.</a><br>' % str(path)
+                if str(path) == '.':
+                    pass
+                else:
+                    body += '<a href=\"/%s\">..</a><br>' % str(path.parents[0])
+
+                for x in path.iterdir():
+                    print(x.resolve())
+                    body += '<a href=\"%s/%s\">%s</a><br>' % (req.url, urllib.parse.quote(x.name), x.name)
+                res.html('''
+                <html>
+                    <head><title>%s</title></head>
+                    <body>
+                        <h1>Index of %s</h1>
+                        <pre>%s</pre>
+                    </body>
+                </html>''' % (req.url, req.url, body))
+            elif os.path.isfile(path):
+                res.set_status(200)
+                Range = req.get_header('range')
+                start, end = None, None
+                if Range is not None:
+                    s, t = Range.strip('bytes=').split('-')
+                    try:
+                        start = int(s)
+                    except ValueError:
+                        start = None
+                    try:
+                        end = int(t)
+                    except ValueError:
+                        end = None
+                await res.send_file(path, start, end)
         else:
             res.set_status(404)
             res.html('<html><body><h1>404 Not found</h1></body></html>')

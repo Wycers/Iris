@@ -15,7 +15,6 @@ class Request():
             if data == b'':
                 break
             tmp = tmp + data.decode()
-        print(tmp)
         message = tmp.split("\r\n")[0:-1]
         if len(message) == 0:
             raise Exception("empty")
@@ -23,6 +22,8 @@ class Request():
         tmp = message[0].split(" ")
         self.method = tmp[0]
         self.url = urllib.parse.unquote(tmp[1])
+        if self.url.endswith('/'):
+            self.url = self.url[:-1]
         self.protocol = tmp[2]
 
         for header in message[1: ]:
